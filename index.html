@@ -1,0 +1,1199 @@
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Prism Network — Minecraft Server</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@300;400;500;600;700;800&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['Inter', 'sans-serif'],
+          pixel: ['"Press Start 2P"', 'cursive'],
+          display: ['Orbitron', 'sans-serif'],
+        },
+        colors: {
+          prism: {
+            1: '#a855f7',
+            2: '#06b6d4',
+            3: '#ec4899',
+            4: '#f59e0b',
+          }
+        }
+      }
+    }
+  }
+</script>
+<style>
+  * { -webkit-tap-highlight-color: transparent; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #07060d;
+    color: #e5e7eb;
+    overflow-x: hidden;
+  }
+
+  /* Animated prism background */
+  .prism-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    background:
+      radial-gradient(circle at 20% 20%, rgba(168,85,247,0.25), transparent 45%),
+      radial-gradient(circle at 80% 30%, rgba(6,182,212,0.25), transparent 45%),
+      radial-gradient(circle at 50% 90%, rgba(236,72,153,0.25), transparent 45%),
+      linear-gradient(180deg, #050410 0%, #0b0720 100%);
+  }
+  .prism-bg::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse at center, black 40%, transparent 80%);
+  }
+
+  .blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.4;
+    animation: float 14s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%,100% { transform: translate(0,0) scale(1); }
+    50% { transform: translate(40px,-30px) scale(1.1); }
+  }
+
+  .glass {
+    background: rgba(255,255,255,0.04);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .prism-text {
+    background: linear-gradient(90deg, #a855f7, #06b6d4, #ec4899, #f59e0b, #a855f7);
+    background-size: 300% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: shine 6s linear infinite;
+  }
+  @keyframes shine {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 300% 50%; }
+  }
+
+  .btn-primary {
+    background: linear-gradient(90deg,#a855f7,#06b6d4,#ec4899);
+    background-size: 200% 100%;
+    color: white;
+    font-weight: 600;
+    transition: all .3s ease;
+    box-shadow: 0 10px 40px -10px rgba(168,85,247,0.6);
+  }
+  .btn-primary:hover { background-position: 100% 0; transform: translateY(-2px); box-shadow: 0 15px 50px -10px rgba(236,72,153,0.7); }
+
+  .rank-card {
+    position: relative;
+    overflow: hidden;
+    transition: all .4s cubic-bezier(.2,.8,.2,1);
+  }
+  .rank-card::before {
+    content:'';
+    position:absolute; inset:-2px;
+    background: linear-gradient(120deg, var(--c1), var(--c2), var(--c3));
+    border-radius: 1.25rem;
+    opacity:0; transition: opacity .4s;
+    z-index:-1;
+  }
+  .rank-card:hover::before { opacity: 1; }
+  .rank-card:hover { transform: translateY(-8px); }
+
+  .shine-border {
+    position: relative;
+    background: linear-gradient(var(--bg, #12101c), var(--bg, #12101c)) padding-box,
+                linear-gradient(120deg,#a855f7,#06b6d4,#ec4899) border-box;
+    border: 1px solid transparent;
+  }
+
+  .pixel-badge {
+    font-family: 'Press Start 2P', cursive;
+    image-rendering: pixelated;
+  }
+
+  /* Particle canvas */
+  #particles {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  .nav-link {
+    position: relative;
+    transition: color .25s;
+  }
+  .nav-link::after {
+    content:'';
+    position:absolute;
+    bottom: -6px; left: 0;
+    width: 0; height: 2px;
+    background: linear-gradient(90deg,#a855f7,#06b6d4);
+    transition: width .3s;
+  }
+  .nav-link:hover::after { width: 100%; }
+
+  .modal {
+    display: none;
+    position: fixed; inset: 0;
+    z-index: 60;
+    background: rgba(5,4,16,0.75);
+    backdrop-filter: blur(10px);
+    align-items: center; justify-content: center;
+    padding: 1rem;
+    animation: fadeIn .25s ease;
+  }
+  .modal.open { display: flex; }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 10px; }
+  ::-webkit-scrollbar-track { background: #0b0720; }
+  ::-webkit-scrollbar-thumb { background: linear-gradient(#a855f7,#06b6d4); border-radius: 10px; }
+
+  .tab-btn.active {
+    background: linear-gradient(90deg,#a855f7,#06b6d4);
+    color: white;
+  }
+
+  .feature-icon {
+    background: linear-gradient(135deg, rgba(168,85,247,.2), rgba(6,182,212,.2));
+    border: 1px solid rgba(168,85,247,.3);
+  }
+
+  input, textarea, select {
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid rgba(255,255,255,0.1);
+    color: white;
+    transition: border .2s;
+  }
+  input:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: #a855f7;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 20px; right: 20px;
+    padding: 14px 22px;
+    background: linear-gradient(90deg,#a855f7,#06b6d4);
+    color: white;
+    border-radius: 12px;
+    font-weight: 600;
+    z-index: 100;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    animation: slideIn .4s ease;
+  }
+  @keyframes slideIn {
+    from { transform: translateX(120%); }
+    to { transform: translateX(0); }
+  }
+
+  .server-ip {
+    font-family: 'Press Start 2P', cursive;
+    letter-spacing: 2px;
+  }
+
+  .copy-btn:active { transform: scale(0.95); }
+
+  .stat-num {
+    background: linear-gradient(180deg,#fff,#a855f7);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Admin sidebar */
+  .admin-sidebar {
+    background: rgba(10,8,20,0.8);
+    backdrop-filter: blur(20px);
+    border-right: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .rank-price-tag {
+    font-family: 'Orbitron', sans-serif;
+  }
+
+  .marquee {
+    display: flex;
+    gap: 3rem;
+    animation: scroll 30s linear infinite;
+  }
+  @keyframes scroll {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+</style>
+</head>
+<body class="relative">
+
+<div class="prism-bg"></div>
+<canvas id="particles"></canvas>
+
+<div class="blob" style="width:400px;height:400px;top:10%;left:-10%;background:#a855f7"></div>
+<div class="blob" style="width:500px;height:500px;top:60%;right:-15%;background:#06b6d4;animation-delay:-5s"></div>
+<div class="blob" style="width:350px;height:350px;top:40%;left:50%;background:#ec4899;animation-delay:-8s"></div>
+
+<!-- NAVBAR -->
+<header id="navbar" class="fixed top-0 left-0 right-0 z-40 transition-all">
+  <nav class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 via-cyan-400 to-pink-500 flex items-center justify-center text-white font-black shadow-lg shadow-purple-500/40">
+        ◆
+      </div>
+      <div>
+        <h1 class="font-display font-black text-lg prism-text">PRISM</h1>
+        <p class="text-[10px] text-gray-400 tracking-widest -mt-1">NETWORK</p>
+      </div>
+    </div>
+    <ul class="hidden md:flex items-center gap-8 text-sm font-medium text-gray-300">
+      <li><a href="#home" class="nav-link hover:text-white">Home</a></li>
+      <li><a href="#features" class="nav-link hover:text-white">Features</a></li>
+      <li><a href="#store" class="nav-link hover:text-white">Store</a></li>
+      <li><a href="#join" class="nav-link hover:text-white">How to Join</a></li>
+      <li><button onclick="openAdminLogin()" class="nav-link hover:text-white">Admin</button></li>
+    </ul>
+    <div class="flex items-center gap-3">
+      <button onclick="copyIP()" class="copy-btn hidden md:flex items-center gap-2 px-4 py-2 glass rounded-lg text-sm">
+        <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+        <span id="ipText" class="server-ip text-[10px]">play.prism.net</span>
+      </button>
+      <a href="#store" class="btn-primary px-5 py-2.5 rounded-lg text-sm">Buy Rank</a>
+      <button class="md:hidden text-2xl" onclick="toggleMobile()">☰</button>
+    </div>
+  </nav>
+
+  <div id="mobileMenu" class="hidden md:hidden px-6 pb-4">
+    <div class="glass rounded-2xl p-4 flex flex-col gap-3">
+      <a href="#home" class="py-2" onclick="toggleMobile()">Home</a>
+      <a href="#features" class="py-2" onclick="toggleMobile()">Features</a>
+      <a href="#store" class="py-2" onclick="toggleMobile()">Store</a>
+      <a href="#join" class="py-2" onclick="toggleMobile()">How to Join</a>
+      <button onclick="openAdminLogin();toggleMobile()" class="py-2 text-left">Admin</button>
+      <button onclick="copyIP()" class="py-2 glass rounded-lg px-3 text-sm text-left">
+        Copy IP: <span class="server-ip text-[10px]" id="ipText2">play.prism.net</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- HERO -->
+<section id="home" class="relative pt-32 pb-20 px-6 min-h-screen flex items-center">
+  <div class="max-w-7xl mx-auto w-full grid lg:grid-cols-2 gap-12 items-center">
+    <div>
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 glass rounded-full text-xs text-purple-300 mb-6">
+        <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+        Server Online • <span id="playerCount">0</span> players playing now
+      </div>
+      <h1 class="font-display font-black text-5xl md:text-7xl leading-[1.05] mb-6">
+        Welcome to <br/>
+        <span class="prism-text">Prism Network</span>
+      </h1>
+      <p id="heroDesc" class="text-lg text-gray-300 mb-8 max-w-xl leading-relaxed">
+        Enter a universe of limitless creativity. Survival, Skyblock, Bedwars, and custom game modes — all powered by a community that never sleeps.
+      </p>
+      <div class="flex flex-wrap gap-4">
+        <a href="#store" class="btn-primary px-7 py-3.5 rounded-xl">🚀 Explore Store</a>
+        <button onclick="copyIP()" class="px-7 py-3.5 rounded-xl glass hover:bg-white/10 transition flex items-center gap-2">
+          📋 Copy Server IP
+        </button>
+      </div>
+      <div class="grid grid-cols-3 gap-4 mt-12 max-w-md">
+        <div>
+          <div class="font-display font-black text-3xl stat-num" id="statPlayers">0+</div>
+          <div class="text-xs text-gray-400 mt-1">Players Joined</div>
+        </div>
+        <div>
+          <div class="font-display font-black text-3xl stat-num" id="statRanks">0</div>
+          <div class="text-xs text-gray-400 mt-1">Premium Ranks</div>
+        </div>
+        <div>
+          <div class="font-display font-black text-3xl stat-num">24/7</div>
+          <div class="text-xs text-gray-400 mt-1">Uptime</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating cube -->
+    <div class="hidden lg:flex justify-center items-center">
+      <div class="relative" style="perspective: 1000px;">
+        <div class="w-80 h-80 relative" style="transform-style: preserve-3d; animation: spin 20s linear infinite;">
+          <div class="absolute inset-0 rounded-3xl border-2 border-purple-400/40" style="transform: translateZ(100px);backdrop-filter:blur(8px);background:linear-gradient(135deg,rgba(168,85,247,0.15),rgba(6,182,212,0.15));"></div>
+          <div class="absolute inset-0 rounded-3xl border-2 border-cyan-400/40" style="transform: rotateY(90deg) translateZ(100px);backdrop-filter:blur(8px);background:linear-gradient(135deg,rgba(6,182,212,0.15),rgba(236,72,153,0.15));"></div>
+          <div class="absolute inset-0 rounded-3xl border-2 border-pink-400/40" style="transform: rotateY(180deg) translateZ(100px);backdrop-filter:blur(8px);background:linear-gradient(135deg,rgba(236,72,153,0.15),rgba(245,158,11,0.15));"></div>
+          <div class="absolute inset-0 rounded-3xl border-2 border-amber-400/40" style="transform: rotateY(-90deg) translateZ(100px);backdrop-filter:blur(8px);background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(168,85,247,0.15));"></div>
+          <div class="absolute inset-0 rounded-3xl flex items-center justify-center" style="transform: rotateX(90deg) translateZ(100px);backdrop-filter:blur(8px);background:linear-gradient(135deg,rgba(168,85,247,0.1),rgba(6,182,212,0.1));">
+            <span class="font-display text-6xl font-black prism-text">◆</span>
+          </div>
+        </div>
+        <style>@keyframes spin { from{transform:rotateX(-20deg) rotateY(0deg);} to{transform:rotateX(-20deg) rotateY(360deg);} }</style>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ANNOUNCEMENT MARQUEE (editable) -->
+<section class="overflow-hidden py-6 border-y border-white/5 bg-white/5">
+  <div class="marquee text-sm text-gray-300 whitespace-nowrap" id="marquee">
+    <!-- Filled by JS -->
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features" class="py-24 px-6">
+  <div class="max-w-7xl mx-auto">
+    <div class="text-center mb-16">
+      <div class="text-sm font-semibold text-purple-400 mb-2 tracking-wider">WHY PRISM</div>
+      <h2 id="featTitle" class="font-display font-black text-4xl md:text-5xl mb-4">What makes us <span class="prism-text">different</span></h2>
+      <p id="featDesc" class="text-gray-400 max-w-2xl mx-auto">Crafted with passion, powered by players. Every feature is designed to deliver the ultimate Minecraft experience.</p>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-6" id="featuresGrid">
+      <!-- Filled by JS -->
+    </div>
+  </div>
+</section>
+
+<!-- STORE / RANKS -->
+<section id="store" class="py-24 px-6 relative">
+  <div class="max-w-7xl mx-auto">
+    <div class="text-center mb-16">
+      <div class="text-sm font-semibold text-cyan-400 mb-2 tracking-wider">OFFICIAL STORE</div>
+      <h2 class="font-display font-black text-4xl md:text-5xl mb-4">Choose Your <span class="prism-text">Rank</span></h2>
+      <p class="text-gray-400 max-w-2xl mx-auto">Support the server and unlock exclusive perks, cosmetics, and powers.</p>
+    </div>
+
+    <div id="ranksGrid" class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <!-- Filled by JS -->
+    </div>
+  </div>
+</section>
+
+<!-- CART SUMMARY (floating) -->
+<div id="cartFab" class="fixed bottom-6 right-6 z-30 hidden">
+  <button onclick="openCart()" class="btn-primary w-16 h-16 rounded-full flex items-center justify-center text-2xl shadow-2xl shadow-purple-500/50 relative">
+    🛒
+    <span id="cartBadge" class="absolute -top-1 -right-1 bg-pink-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">0</span>
+  </button>
+</div>
+
+<!-- HOW TO JOIN -->
+<section id="join" class="py-24 px-6">
+  <div class="max-w-7xl mx-auto">
+    <div class="text-center mb-16">
+      <div class="text-sm font-semibold text-pink-400 mb-2 tracking-wider">GET STARTED</div>
+      <h2 class="font-display font-black text-4xl md:text-5xl mb-4">How to <span class="prism-text">Join</span></h2>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-6">
+      <div class="glass rounded-2xl p-8 hover:border-purple-400/40 transition">
+        <div class="w-14 h-14 rounded-xl feature-icon flex items-center justify-center text-2xl mb-5">1️⃣</div>
+        <h3 class="font-display font-bold text-xl mb-2">Launch Minecraft</h3>
+        <p class="text-gray-400 text-sm">Open Minecraft Java Edition 1.20+ on your device and head to Multiplayer.</p>
+      </div>
+      <div class="glass rounded-2xl p-8 hover:border-cyan-400/40 transition">
+        <div class="w-14 h-14 rounded-xl feature-icon flex items-center justify-center text-2xl mb-5">2️⃣</div>
+        <h3 class="font-display font-bold text-xl mb-2">Add Server</h3>
+        <p class="text-gray-400 text-sm">Click "Add Server" and paste the server IP below in the address field.</p>
+      </div>
+      <div class="glass rounded-2xl p-8 hover:border-pink-400/40 transition">
+        <div class="w-14 h-14 rounded-xl feature-icon flex items-center justify-center text-2xl mb-5">3️⃣</div>
+        <h3 class="font-display font-bold text-xl mb-2">Play!</h3>
+        <p class="text-gray-400 text-sm">Double-click the server to connect and start your adventure with us.</p>
+      </div>
+    </div>
+
+    <div class="mt-12 rounded-3xl p-1 bg-gradient-to-r from-purple-500 via-cyan-500 to-pink-500">
+      <div class="rounded-3xl bg-[#0b0720] px-8 py-8 flex flex-col md:flex-row items-center justify-between gap-6">
+        <div>
+          <p class="text-sm text-gray-400 mb-1">Server Address</p>
+          <p class="server-ip text-xl md:text-2xl text-white" id="mainIp">play.prism.net</p>
+        </div>
+        <button onclick="copyIP()" class="btn-primary px-8 py-3.5 rounded-xl text-sm flex items-center gap-2">
+          📋 Copy IP to Clipboard
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="border-t border-white/5 py-12 px-6">
+  <div class="max-w-7xl mx-auto grid md:grid-cols-4 gap-8">
+    <div>
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 via-cyan-400 to-pink-500 flex items-center justify-center text-white font-black">◆</div>
+        <div>
+          <h3 class="font-display font-black prism-text">PRISM</h3>
+          <p class="text-[10px] text-gray-500 tracking-widest">NETWORK</p>
+        </div>
+      </div>
+      <p class="text-sm text-gray-400">The ultimate Minecraft network for creative players worldwide.</p>
+    </div>
+    <div>
+      <h4 class="font-display font-bold mb-4">Quick Links</h4>
+      <ul class="space-y-2 text-sm text-gray-400">
+        <li><a href="#home" class="hover:text-white">Home</a></li>
+        <li><a href="#store" class="hover:text-white">Store</a></li>
+        <li><a href="#features" class="hover:text-white">Features</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4 class="font-display font-bold mb-4">Community</h4>
+      <ul class="space-y-2 text-sm text-gray-400">
+        <li id="footerDiscord">Discord</li>
+        <li id="footerYT">YouTube</li>
+        <li id="footerTwitter">Twitter / X</li>
+      </ul>
+    </div>
+    <div>
+      <h4 class="font-display font-bold mb-4">Support</h4>
+      <p class="text-sm text-gray-400">Need help? Contact our support team or visit the rules page.</p>
+    </div>
+  </div>
+  <div class="max-w-7xl mx-auto mt-10 pt-6 border-t border-white/5 text-center text-xs text-gray-500">
+    © 2025 Prism Network — Not affiliated with Mojang AB. All rights reserved.
+  </div>
+</footer>
+
+<!-- ADMIN LOGIN MODAL -->
+<div id="adminLoginModal" class="modal">
+  <div class="glass rounded-2xl p-8 max-w-md w-full">
+    <div class="flex items-center justify-between mb-6">
+      <h3 class="font-display font-black text-2xl">🔐 Admin Login</h3>
+      <button onclick="closeModal('adminLoginModal')" class="text-gray-400 hover:text-white text-2xl">×</button>
+    </div>
+    <p class="text-sm text-gray-400 mb-6">Enter credentials to access the Admin Dashboard.</p>
+    <div class="space-y-4">
+      <div>
+        <label class="text-xs text-gray-400 mb-1 block">Username</label>
+        <input id="adminUser" type="text" class="w-full px-4 py-3 rounded-lg" placeholder="admin"/>
+      </div>
+      <div>
+        <label class="text-xs text-gray-400 mb-1 block">Password</label>
+        <input id="adminPass" type="password" class="w-full px-4 py-3 rounded-lg" placeholder="••••••••"/>
+      </div>
+      <p id="loginErr" class="text-red-400 text-sm hidden">Invalid credentials</p>
+      <button onclick="doAdminLogin()" class="btn-primary w-full py-3 rounded-lg">Login</button>
+    </div>
+    
+  </div>
+</div>
+
+<!-- CART MODAL -->
+<div id="cartModal" class="modal">
+  <div class="glass rounded-2xl p-8 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between mb-6">
+      <h3 class="font-display font-black text-2xl">🛒 Your Cart</h3>
+      <button onclick="closeModal('cartModal')" class="text-gray-400 hover:text-white text-2xl">×</button>
+    </div>
+    <div id="cartItems" class="space-y-3"></div>
+    <div class="border-t border-white/10 mt-6 pt-6">
+      <div class="flex justify-between items-center mb-4">
+        <span class="text-gray-400">Total</span>
+        <span id="cartTotal" class="font-display font-black text-2xl prism-text">$0.00</span>
+      </div>
+      <input placeholder="Your Minecraft Username" id="cartUser" class="w-full px-4 py-3 rounded-lg mb-3"/>
+      <input placeholder="Your Email" id="cartEmail" class="w-full px-4 py-3 rounded-lg mb-4"/>
+      <button onclick="checkout()" class="btn-primary w-full py-3 rounded-lg">Proceed to Checkout</button>
+      <p class="text-xs text-gray-500 text-center mt-3">Payment integrations can be added by the admin.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="adminPanel" class="fixed inset-0 z-50 hidden">
+  <div class="flex h-full">
+    <!-- Sidebar -->
+    <aside class="admin-sidebar w-64 hidden md:flex flex-col p-6">
+      <div class="flex items-center gap-2 mb-8">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 via-cyan-400 to-pink-500 flex items-center justify-center text-white font-black">◆</div>
+        <div>
+          <h3 class="font-display font-black prism-text text-sm">ADMIN</h3>
+          <p class="text-[10px] text-gray-500">Control Panel</p>
+        </div>
+      </div>
+      <nav class="space-y-1 flex-1">
+        <button onclick="switchTab('dashboard')" class="tab-btn active w-full text-left px-4 py-3 rounded-lg text-sm hover:bg-white/5">📊 Dashboard</button>
+        <button onclick="switchTab('content')" class="tab-btn w-full text-left px-4 py-3 rounded-lg text-sm hover:bg-white/5">📝 Site Content</button>
+        <button onclick="switchTab('ranks')" class="tab-btn w-full text-left px-4 py-3 rounded-lg text-sm hover:bg-white/5">🏆 Manage Ranks</button>
+        <button onclick="switchTab('features')" class="tab-btn w-full text-left px-4 py-3 rounded-lg text-sm hover:bg-white/5">⚡ Features</button>
+        <button onclick="switchTab('orders')" class="tab-btn w-full text-left px-4 py-3 rounded-lg text-sm hover:bg-white/5">📦 Orders</button>
+        <button onclick="switchTab('settings')" class="tab-btn w-full text-left px-4 py-3 rounded-lg text-sm hover:bg-white/5">⚙️ Settings</button>
+      </nav>
+      <button onclick="adminLogout()" class="mt-4 px-4 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 text-sm border border-red-500/30">🚪 Logout</button>
+    </aside>
+
+    <!-- Mobile top bar -->
+    <div class="md:hidden fixed top-0 left-0 right-0 z-10 p-4 glass flex justify-between items-center">
+      <h3 class="font-display font-black prism-text">Admin</h3>
+      <select onchange="switchTab(this.value)" class="px-3 py-1.5 rounded-lg text-sm">
+        <option value="dashboard">Dashboard</option>
+        <option value="content">Content</option>
+        <option value="ranks">Ranks</option>
+        <option value="features">Features</option>
+        <option value="orders">Orders</option>
+        <option value="settings">Settings</option>
+      </select>
+      <button onclick="adminLogout()" class="text-red-300 text-sm">Exit</button>
+    </div>
+
+    <!-- Main -->
+    <main class="flex-1 overflow-y-auto p-6 md:p-10">
+
+      <!-- Dashboard -->
+      <div id="tab-dashboard" class="tab-content">
+        <h2 class="font-display font-black text-3xl mb-6">Dashboard</h2>
+        <div class="grid md:grid-cols-4 gap-4 mb-8">
+          <div class="glass rounded-2xl p-6"><div class="text-xs text-gray-400">Total Ranks</div><div class="font-display font-black text-3xl mt-2 prism-text" id="dbRanks">0</div></div>
+          <div class="glass rounded-2xl p-6"><div class="text-xs text-gray-400">Orders</div><div class="font-display font-black text-3xl mt-2 prism-text" id="dbOrders">0</div></div>
+          <div class="glass rounded-2xl p-6"><div class="text-xs text-gray-400">Revenue</div><div class="font-display font-black text-3xl mt-2 prism-text" id="dbRevenue">$0</div></div>
+          <div class="glass rounded-2xl p-6"><div class="text-xs text-gray-400">Server IP</div><div class="text-sm mt-3 server-ip" id="dbIp">play.prism.net</div></div>
+        </div>
+        <div class="glass rounded-2xl p-6 mb-6">
+          <h3 class="font-display font-bold mb-4">Recent Orders</h3>
+          <div id="dbRecentOrders" class="space-y-2 text-sm"></div>
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div id="tab-content" class="tab-content hidden">
+        <h2 class="font-display font-black text-3xl mb-6">Site Content</h2>
+        <div class="glass rounded-2xl p-6 space-y-5 max-w-3xl">
+          <div>
+            <label class="text-xs text-gray-400 mb-1 block">Hero Description</label>
+            <textarea id="inHero" rows="3" class="w-full px-4 py-3 rounded-lg"></textarea>
+          </div>
+          <div>
+            <label class="text-xs text-gray-400 mb-1 block">Features Section Title</label>
+            <input id="inFeatTitle" class="w-full px-4 py-3 rounded-lg"/>
+          </div>
+          <div>
+            <label class="text-xs text-gray-400 mb-1 block">Features Section Description</label>
+            <textarea id="inFeatDesc" rows="2" class="w-full px-4 py-3 rounded-lg"></textarea>
+          </div>
+          <div>
+            <label class="text-xs text-gray-400 mb-1 block">Announcement Text (comma separated)</label>
+            <textarea id="inMarquee" rows="2" class="w-full px-4 py-3 rounded-lg"></textarea>
+          </div>
+          <div>
+            <label class="text-xs text-gray-400 mb-1 block">Players online count</label>
+            <input id="inPlayers" type="number" class="w-full px-4 py-3 rounded-lg"/>
+          </div>
+          <button onclick="saveContent()" class="btn-primary px-6 py-3 rounded-lg">💾 Save Content</button>
+        </div>
+      </div>
+
+      <!-- Ranks -->
+      <div id="tab-ranks" class="tab-content hidden">
+        <h2 class="font-display font-black text-3xl mb-6">Manage Ranks</h2>
+        <div class="glass rounded-2xl p-6 mb-6 max-w-3xl">
+          <h3 class="font-display font-bold mb-4" id="rankFormTitle">➕ Add New Rank</h3>
+          <div class="grid md:grid-cols-2 gap-4">
+            <input id="rName" placeholder="Rank Name (e.g., VIP)" class="px-4 py-3 rounded-lg"/>
+            <input id="rPrice" type="number" step="0.01" placeholder="Price in $" class="px-4 py-3 rounded-lg"/>
+            <input id="rColor1" placeholder="Gradient Start (#color)" class="px-4 py-3 rounded-lg"/>
+            <input id="rColor2" placeholder="Gradient Mid (#color)" class="px-4 py-3 rounded-lg"/>
+            <input id="rColor3" placeholder="Gradient End (#color)" class="px-4 py-3 rounded-lg"/>
+            <input id="rEmoji" placeholder="Emoji Icon (e.g., ⭐)" class="px-4 py-3 rounded-lg"/>
+          </div>
+          <textarea id="rPerks" rows="4" placeholder="Perks (one per line)" class="w-full px-4 py-3 rounded-lg mt-4"></textarea>
+          <div class="flex gap-2 mt-4">
+            <button onclick="saveRank()" class="btn-primary px-6 py-3 rounded-lg" id="rankSaveBtn">Add Rank</button>
+            <button onclick="resetRankForm()" class="px-6 py-3 rounded-lg glass">Clear</button>
+          </div>
+          <input type="hidden" id="rId" value=""/>
+        </div>
+
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4" id="adminRanksList"></div>
+      </div>
+
+      <!-- Features -->
+      <div id="tab-features" class="tab-content hidden">
+        <h2 class="font-display font-black text-3xl mb-6">Manage Features</h2>
+        <div class="glass rounded-2xl p-6 mb-6 max-w-3xl">
+          <h3 class="font-display font-bold mb-4">➕ Add Feature</h3>
+          <div class="grid md:grid-cols-2 gap-4">
+            <input id="fTitle" placeholder="Feature Title" class="px-4 py-3 rounded-lg"/>
+            <input id="fIcon" placeholder="Emoji Icon" class="px-4 py-3 rounded-lg"/>
+          </div>
+          <textarea id="fDesc" rows="3" placeholder="Feature description" class="w-full px-4 py-3 rounded-lg mt-4"></textarea>
+          <button onclick="saveFeature()" class="btn-primary px-6 py-3 rounded-lg mt-4">Add Feature</button>
+        </div>
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4" id="adminFeaturesList"></div>
+      </div>
+
+      <!-- Orders -->
+      <div id="tab-orders" class="tab-content hidden">
+        <h2 class="font-display font-black text-3xl mb-6">Customer Orders</h2>
+        <div class="glass rounded-2xl p-6">
+          <div id="adminOrdersList" class="space-y-3"></div>
+        </div>
+      </div>
+
+      <!-- Settings -->
+      <div id="tab-settings" class="tab-content hidden">
+        <h2 class="font-display font-black text-3xl mb-6">Settings</h2>
+        <div class="glass rounded-2xl p-6 max-w-2xl space-y-5">
+          <div>
+            <label class="text-xs text-gray-400 mb-1 block">Server IP</label>
+            <input id="inServerIp" class="w-full px-4 py-3 rounded-lg"/>
+          </div>
+          <div>
+            <label class="text-xs text-gray-400 mb-1 block">Discord Link</label>
+            <input id="inDiscord" class="w-full px-4 py-3 rounded-lg"/>
+          </div>
+          <div>
+            <label class="text-xs text-gray-400 mb-1 block">YouTube Link</label>
+            <input id="inYT" class="w-full px-4 py-3 rounded-lg"/>
+          </div>
+          <div>
+            <label class="text-xs text-gray-400 mb-1 block">Twitter Link</label>
+            <input id="inTwitter" class="w-full px-4 py-3 rounded-lg"/>
+          </div>
+          <hr class="border-white/10"/>
+          <div>
+            <label class="text-xs text-gray-400 mb-1 block">Change Admin Password</label>
+            <input id="newPass" type="password" placeholder="New password" class="w-full px-4 py-3 rounded-lg mb-2"/>
+            <button onclick="changePassword()" class="btn-primary px-6 py-2.5 rounded-lg">Update</button>
+          </div>
+          <button onclick="saveSettings()" class="btn-primary px-6 py-3 rounded-lg mt-2">💾 Save Settings</button>
+          <hr class="border-white/10"/>
+          <div>
+            <button onclick="exportData()" class="px-4 py-2 rounded-lg glass text-sm">📤 Export Data (JSON)</button>
+            <button onclick="resetAllData()" class="px-4 py-2 rounded-lg bg-red-500/20 text-red-300 text-sm">⚠️ Reset All Data</button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script>
+/* ============== DATABASE SIMULATION (localStorage) ============== */
+const DB_KEY = 'prism_db_v1';
+
+const defaultDB = {
+  auth: { user: 'admin', pass: 'prism2024' },
+  settings: {
+    serverIp: 'play.prism.net',
+    discord: 'https://discord.gg/',
+    youtube: 'https://youtube.com/',
+    twitter: 'https://twitter.com/'
+  },
+  content: {
+    heroDesc: 'Enter a universe of limitless creativity. Survival, Skyblock, Bedwars, and custom game modes — all powered by a community that never sleeps.',
+    featTitle: 'What makes us different',
+    featDesc: 'Crafted with passion, powered by players. Every feature is designed to deliver the ultimate Minecraft experience.',
+    marquee: ['🎮 20+ Custom Plugins','💎 Premium Rewards','🌍 Worldwide Players','⚔️ Daily Events','🏆 Leaderboards','🛡️ Anti-Cheat Protected','💬 Active Discord Community'],
+    players: 247
+  },
+  features: [
+    { id:1, icon:'⚡', title:'Blazing Performance', desc:'Low-ping TPS 20 servers powered by enterprise hardware across multiple regions.' },
+    { id:2, icon:'🛡️', title:'Advanced Anti-Cheat', desc:'Our custom anti-cheat system keeps the gameplay fair, fun, and competitive.' },
+    { id:3, icon:'🎮', title:'Exclusive Game Modes', desc:'Survival, Skyblock, Bedwars, SMP, Prison and limited-time seasonal events.' },
+    { id:4, icon:'👥', title:'Active Community', desc:'Friendly staff, tournaments every weekend, and thousands of daily players.' },
+    { id:5, icon:'🎨', title:'Custom Cosmetics', desc:'Unique pets, trails, hats and emotes only available on Prism Network.' },
+    { id:6, icon:'🏆', title:'Competitive Ranks', desc:'Climb the leaderboard and unlock legendary rewards throughout seasons.' }
+  ],
+  ranks: [
+    { id:1, name:'VIP', price:4.99, c1:'#22c55e', c2:'#10b981', c3:'#14b8a6', emoji:'⭐', perks:['/fly in lobby','Colored chat','VIP kit daily','2x XP boost','VIP tag'] },
+    { id:2, name:'MVP', price:9.99, c1:'#06b6d4', c2:'#0ea5e9', c3:'#3b82f6', emoji:'💎', perks:['All VIP perks','/heal command','Private warp','Custom tag','MVP kit daily','5x XP boost'] },
+    { id:3, name:'ELITE', price:19.99, c1:'#a855f7', c2:'#8b5cf6', c3:'#d946ef', emoji:'👑', perks:['All MVP perks','/nick command','Particle trail','Elite kit daily','Priority queue','10x XP boost'] },
+    { id:4, name:'LEGEND', price:39.99, c1:'#f59e0b', c2:'#ef4444', c3:'#ec4899', emoji:'🔥', perks:['All Elite perks','Custom pet','Legendary kit','/god mode creative','Exclusive events','20x XP boost','Private server slot'] }
+  ],
+  orders: []
+};
+
+function loadDB() {
+  const stored = localStorage.getItem(DB_KEY);
+  if (!stored) {
+    localStorage.setItem(DB_KEY, JSON.stringify(defaultDB));
+    return JSON.parse(JSON.stringify(defaultDB));
+  }
+  try { return JSON.parse(stored); } catch(e) { return defaultDB; }
+}
+function saveDB(db) { localStorage.setItem(DB_KEY, JSON.stringify(db)); }
+
+let DB = loadDB();
+
+/* ============== RENDERING ============== */
+function renderHero() {
+  document.getElementById('heroDesc').textContent = DB.content.heroDesc;
+  document.getElementById('ipText').textContent = DB.settings.serverIp;
+  document.getElementById('ipText2').textContent = DB.settings.serverIp;
+  document.getElementById('mainIp').textContent = DB.settings.serverIp;
+  document.getElementById('playerCount').textContent = DB.content.players;
+  animateStat('statPlayers', 12500, '+');
+  document.getElementById('statRanks').textContent = DB.ranks.length;
+
+  // Footer social links
+  document.getElementById('footerDiscord').innerHTML = `<a href="${DB.settings.discord}" target="_blank" class="hover:text-white">Discord</a>`;
+  document.getElementById('footerYT').innerHTML = `<a href="${DB.settings.youtube}" target="_blank" class="hover:text-white">YouTube</a>`;
+  document.getElementById('footerTwitter').innerHTML = `<a href="${DB.settings.twitter}" target="_blank" class="hover:text-white">Twitter / X</a>`;
+}
+
+function animateStat(id, target, suffix='') {
+  const el = document.getElementById(id);
+  let cur = 0;
+  const step = Math.ceil(target/60);
+  const t = setInterval(() => {
+    cur += step;
+    if (cur >= target) { cur = target; clearInterval(t); }
+    el.textContent = cur.toLocaleString() + suffix;
+  }, 20);
+}
+
+function renderFeatures() {
+  document.getElementById('featTitle').innerHTML = `${DB.content.featTitle.split('different')[0]}<span class="prism-text">different</span>`;
+  document.getElementById('featDesc').textContent = DB.content.featDesc;
+  const grid = document.getElementById('featuresGrid');
+  grid.innerHTML = DB.features.map(f => `
+    <div class="glass rounded-2xl p-7 hover:border-purple-400/40 transition hover:-translate-y-1 duration-300">
+      <div class="w-14 h-14 rounded-2xl feature-icon flex items-center justify-center text-3xl mb-5">${f.icon}</div>
+      <h3 class="font-display font-bold text-xl mb-2">${f.title}</h3>
+      <p class="text-gray-400 text-sm leading-relaxed">${f.desc}</p>
+    </div>
+  `).join('');
+}
+
+function renderMarquee() {
+  const items = DB.content.marquee.map(m => `<span class="flex items-center gap-2">◆ ${m}</span>`).join('');
+  document.getElementById('marquee').innerHTML = items + items;
+}
+
+function renderRanks() {
+  const grid = document.getElementById('ranksGrid');
+  grid.innerHTML = DB.ranks.map(r => `
+    <div class="rank-card glass rounded-[20px] p-6 relative" style="--c1:${r.c1};--c2:${r.c2};--c3:${r.c3}">
+      <div class="text-6xl mb-4">${r.emoji}</div>
+      <div class="pixel-badge text-[10px] mb-2" style="color:${r.c1}">${r.name}</div>
+      <h3 class="font-display font-black text-2xl mb-1">${r.name} Rank</h3>
+      <div class="rank-price-tag font-black text-4xl mt-3 mb-5" style="background:linear-gradient(90deg,${r.c1},${r.c2},${r.c3});-webkit-background-clip:text;background-clip:text;color:transparent;">$${r.price.toFixed(2)}</div>
+      <ul class="space-y-2 text-sm text-gray-300 mb-6">
+        ${r.perks.map(p => `<li class="flex items-start gap-2"><span style="color:${r.c1}">✓</span><span>${p}</span></li>`).join('')}
+      </ul>
+      <button onclick="addToCart(${r.id})" class="w-full py-3 rounded-xl text-white font-semibold text-sm transition hover:brightness-110" style="background:linear-gradient(90deg,${r.c1},${r.c2},${r.c3})">
+        Add to Cart
+      </button>
+    </div>
+  `).join('');
+}
+
+function renderAll() {
+  renderHero();
+  renderFeatures();
+  renderMarquee();
+  renderRanks();
+}
+
+/* ============== CART ============== */
+let cart = [];
+
+function addToCart(id) {
+  const rank = DB.ranks.find(r => r.id === id);
+  if (!rank) return;
+  cart.push(rank);
+  updateCartFab();
+  toast(`Added ${rank.name} to cart 🛒`);
+}
+
+function updateCartFab() {
+  const fab = document.getElementById('cartFab');
+  if (cart.length === 0) fab.classList.add('hidden');
+  else fab.classList.remove('hidden');
+  document.getElementById('cartBadge').textContent = cart.length;
+}
+
+function openCart() {
+  const items = document.getElementById('cartItems');
+  if (cart.length === 0) {
+    items.innerHTML = '<p class="text-center text-gray-400 py-10">Your cart is empty</p>';
+  } else {
+    items.innerHTML = cart.map((r, i) => `
+      <div class="flex items-center gap-4 glass rounded-xl p-4">
+        <div class="text-3xl">${r.emoji}</div>
+        <div class="flex-1">
+          <div class="font-display font-bold">${r.name}</div>
+          <div class="text-sm text-gray-400">$${r.price.toFixed(2)}</div>
+        </div>
+        <button onclick="removeFromCart(${i})" class="text-red-400 hover:text-red-300 text-lg">🗑️</button>
+      </div>
+    `).join('');
+  }
+  document.getElementById('cartTotal').textContent = '$' + cart.reduce((s,r)=>s+r.price,0).toFixed(2);
+  document.getElementById('cartModal').classList.add('open');
+}
+
+function removeFromCart(i) {
+  cart.splice(i,1);
+  updateCartFab();
+  openCart();
+}
+
+function checkout() {
+  const user = document.getElementById('cartUser').value.trim();
+  const email = document.getElementById('cartEmail').value.trim();
+  if (!user || !email) return toast('Please fill username & email','err');
+  if (cart.length === 0) return toast('Cart is empty','err');
+
+  const order = {
+    id: Date.now(),
+    date: new Date().toISOString(),
+    user, email,
+    items: cart.map(r => ({name:r.name,price:r.price})),
+    total: cart.reduce((s,r)=>s+r.price,0),
+    status: 'pending'
+  };
+  DB.orders.unshift(order);
+  saveDB(DB);
+  cart = [];
+  updateCartFab();
+  closeModal('cartModal');
+  toast('Order placed successfully! 🎉 (Payment gateway can be added by admin)');
+  document.getElementById('cartUser').value = '';
+  document.getElementById('cartEmail').value = '';
+}
+
+/* ============== ADMIN ============== */
+function openAdminLogin() {
+  document.getElementById('adminLoginModal').classList.add('open');
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function doAdminLogin() {
+  const u = document.getElementById('adminUser').value.trim();
+  const p = document.getElementById('adminPass').value;
+  if (u === DB.auth.user && p === DB.auth.pass) {
+    closeModal('adminLoginModal');
+    document.getElementById('adminPanel').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    loadAdminForms();
+    switchTab('dashboard');
+    toast('Welcome, Admin! 👑');
+  } else {
+    document.getElementById('loginErr').classList.remove('hidden');
+  }
+}
+
+function adminLogout() {
+  document.getElementById('adminPanel').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+  document.getElementById('tab-' + name).classList.remove('hidden');
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => { if (b.textContent.toLowerCase().includes(name) || (name==='dashboard' && b.textContent.includes('Dashboard'))) b.classList.add('active'); });
+  if (name === 'dashboard') refreshDashboard();
+  if (name === 'ranks') renderAdminRanks();
+  if (name === 'features') renderAdminFeatures();
+  if (name === 'orders') renderAdminOrders();
+}
+
+function refreshDashboard() {
+  document.getElementById('dbRanks').textContent = DB.ranks.length;
+  document.getElementById('dbOrders').textContent = DB.orders.length;
+  const rev = DB.orders.reduce((s,o)=>s+o.total,0);
+  document.getElementById('dbRevenue').textContent = '$' + rev.toFixed(2);
+  document.getElementById('dbIp').textContent = DB.settings.serverIp;
+  const recent = DB.orders.slice(0,5);
+  document.getElementById('dbRecentOrders').innerHTML = recent.length
+    ? recent.map(o => `<div class="flex justify-between items-center p-3 bg-white/5 rounded-lg"><div><span class="font-bold">${o.user}</span> <span class="text-gray-500 text-xs">${new Date(o.date).toLocaleString()}</span></div><div class="text-cyan-400 font-display">$${o.total.toFixed(2)}</div></div>`).join('')
+    : '<p class="text-gray-500 text-sm">No orders yet</p>';
+}
+
+function loadAdminForms() {
+  document.getElementById('inHero').value = DB.content.heroDesc;
+  document.getElementById('inFeatTitle').value = DB.content.featTitle;
+  document.getElementById('inFeatDesc').value = DB.content.featDesc;
+  document.getElementById('inMarquee').value = DB.content.marquee.join(', ');
+  document.getElementById('inPlayers').value = DB.content.players;
+  document.getElementById('inServerIp').value = DB.settings.serverIp;
+  document.getElementById('inDiscord').value = DB.settings.discord;
+  document.getElementById('inYT').value = DB.settings.youtube;
+  document.getElementById('inTwitter').value = DB.settings.twitter;
+}
+
+function saveContent() {
+  DB.content.heroDesc = document.getElementById('inHero').value;
+  DB.content.featTitle = document.getElementById('inFeatTitle').value;
+  DB.content.featDesc = document.getElementById('inFeatDesc').value;
+  DB.content.marquee = document.getElementById('inMarquee').value.split(',').map(s=>s.trim()).filter(Boolean);
+  DB.content.players = parseInt(document.getElementById('inPlayers').value) || 0;
+  saveDB(DB); renderAll(); toast('Content saved ✓');
+}
+
+function saveSettings() {
+  DB.settings.serverIp = document.getElementById('inServerIp').value;
+  DB.settings.discord = document.getElementById('inDiscord').value;
+  DB.settings.youtube = document.getElementById('inYT').value;
+  DB.settings.twitter = document.getElementById('inTwitter').value;
+  saveDB(DB); renderAll(); toast('Settings saved ✓');
+}
+
+function changePassword() {
+  const np = document.getElementById('newPass').value.trim();
+  if (np.length < 4) return toast('Password too short','err');
+  DB.auth.pass = np;
+  saveDB(DB);
+  document.getElementById('newPass').value = '';
+  toast('Password updated ✓');
+}
+
+/* Ranks admin CRUD */
+function renderAdminRanks() {
+  const list = document.getElementById('adminRanksList');
+  list.innerHTML = DB.ranks.map(r => `
+    <div class="glass rounded-2xl p-5">
+      <div class="flex items-start justify-between mb-3">
+        <div>
+          <div class="text-3xl">${r.emoji}</div>
+          <h4 class="font-display font-bold text-lg mt-2">${r.name}</h4>
+          <div class="text-pink-400 font-display">$${r.price.toFixed(2)}</div>
+        </div>
+        <div class="flex gap-1">
+          <button onclick="editRank(${r.id})" class="px-3 py-1.5 rounded-lg glass text-xs">✏️</button>
+          <button onclick="deleteRank(${r.id})" class="px-3 py-1.5 rounded-lg bg-red-500/20 text-red-300 text-xs">🗑️</button>
+        </div>
+      </div>
+      <ul class="text-xs text-gray-400 space-y-1">
+        ${r.perks.slice(0,4).map(p=>`<li>• ${p}</li>`).join('')}
+      </ul>
+    </div>
+  `).join('') || '<p class="col-span-full text-gray-500">No ranks yet</p>';
+}
+
+function editRank(id) {
+  const r = DB.ranks.find(x=>x.id===id);
+  if (!r) return;
+  document.getElementById('rId').value = r.id;
+  document.getElementById('rName').value = r.name;
+  document.getElementById('rPrice').value = r.price;
+  document.getElementById('rColor1').value = r.c1;
+  document.getElementById('rColor2').value = r.c2;
+  document.getElementById('rColor3').value = r.c3;
+  document.getElementById('rEmoji').value = r.emoji;
+  document.getElementById('rPerks').value = r.perks.join('\n');
+  document.getElementById('rankFormTitle').textContent = '✏️ Edit Rank';
+  document.getElementById('rankSaveBtn').textContent = 'Update Rank';
+  window.scrollTo({top: document.getElementById('tab-ranks').offsetTop, behavior:'smooth'});
+}
+
+function resetRankForm() {
+  ['rId','rName','rPrice','rColor1','rColor2','rColor3','rEmoji','rPerks'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('rankFormTitle').textContent = '➕ Add New Rank';
+  document.getElementById('rankSaveBtn').textContent = 'Add Rank';
+}
+
+function saveRank() {
+  const id = document.getElementById('rId').value;
+  const name = document.getElementById('rName').value.trim();
+  const price = parseFloat(document.getElementById('rPrice').value);
+  const c1 = document.getElementById('rColor1').value || '#a855f7';
+  const c2 = document.getElementById('rColor2').value || '#06b6d4';
+  const c3 = document.getElementById('rColor3').value || '#ec4899';
+  const emoji = document.getElementById('rEmoji').value || '⭐';
+  const perks = document.getElementById('rPerks').value.split('\n').map(s=>s.trim()).filter(Boolean);
+
+  if (!name || !price) return toast('Name & price required','err');
+
+  if (id) {
+    const r = DB.ranks.find(x=>x.id===parseInt(id));
+    Object.assign(r, { name, price, c1, c2, c3, emoji, perks });
+  } else {
+    DB.ranks.push({ id: Date.now(), name, price, c1, c2, c3, emoji, perks });
+  }
+  saveDB(DB); renderAll(); renderAdminRanks(); resetRankForm(); toast('Rank saved ✓');
+}
+
+function deleteRank(id) {
+  if (!confirm('Delete this rank?')) return;
+  DB.ranks = DB.ranks.filter(r=>r.id!==id);
+  saveDB(DB); renderAll(); renderAdminRanks(); toast('Rank deleted');
+}
+
+/* Features admin */
+function renderAdminFeatures() {
+  const list = document.getElementById('adminFeaturesList');
+  list.innerHTML = DB.features.map(f => `
+    <div class="glass rounded-2xl p-5">
+      <div class="flex justify-between items-start mb-2">
+        <div class="text-3xl">${f.icon}</div>
+        <button onclick="deleteFeature(${f.id})" class="px-3 py-1.5 rounded-lg bg-red-500/20 text-red-300 text-xs">🗑️</button>
+      </div>
+      <h4 class="font-display font-bold mt-2">${f.title}</h4>
+      <p class="text-sm text-gray-400 mt-1">${f.desc}</p>
+    </div>
+  `).join('');
+}
+
+function saveFeature() {
+  const icon = document.getElementById('fIcon').value || '⚡';
+  const title = document.getElementById('fTitle').value.trim();
+  const desc = document.getElementById('fDesc').value.trim();
+  if (!title) return toast('Title required','err');
+  DB.features.push({ id: Date.now(), icon, title, desc });
+  saveDB(DB); renderAll(); renderAdminFeatures();
+  document.getElementById('fIcon').value = '';
+  document.getElementById('fTitle').value = '';
+  document.getElementById('fDesc').value = '';
+  toast('Feature added ✓');
+}
+
+function deleteFeature(id) {
+  if (!confirm('Delete this feature?')) return;
+  DB.features = DB.features.filter(f=>f.id!==id);
+  saveDB(DB); renderAll(); renderAdminFeatures();
+}
+
+/* Orders admin */
+function renderAdminOrders() {
+  const list = document.getElementById('adminOrdersList');
+  if (DB.orders.length === 0) {
+    list.innerHTML = '<p class="text-gray-500 text-center py-10">No orders yet</p>';
+    return;
+  }
+  list.innerHTML = DB.orders.map(o => `
+    <div class="glass rounded-xl p-5">
+      <div class="flex flex-wrap justify-between items-start gap-3 mb-3">
+        <div>
+          <div class="font-display font-bold text-lg">${o.user}</div>
+          <div class="text-xs text-gray-400">${o.email}</div>
+          <div class="text-xs text-gray-500 mt-1">#${o.id} • ${new Date(o.date).toLocaleString()}</div>
+        </div>
+        <div class="text-right">
+          <div class="font-display font-black text-xl prism-text">$${o.total.toFixed(2)}</div>
+          <select onchange="updateOrderStatus(${o.id}, this.value)" class="mt-1 text-xs px-2 py-1 rounded">
+            <option value="pending" ${o.status==='pending'?'selected':''}>⏳ Pending</option>
+            <option value="paid" ${o.status==='paid'?'selected':''}>✅ Paid</option>
+            <option value="delivered" ${o.status==='delivered'?'selected':''}>📦 Delivered</option>
+          </select>
+        </div>
+      </div>
+      <div class="text-sm text-gray-400">Items: ${o.items.map(i=>i.name).join(', ')}</div>
+    </div>
+  `).join('');
+}
+
+function updateOrderStatus(id, status) {
+  const o = DB.orders.find(x=>x.id===id);
+  if (o) { o.status = status; saveDB(DB); }
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(DB, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'prism-data.json'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function resetAllData() {
+  if (!confirm('This will erase ALL data. Are you sure?')) return;
+  localStorage.removeItem(DB_KEY);
+  DB = loadDB();
+  loadAdminForms(); refreshDashboard(); renderAdminRanks(); renderAdminFeatures(); renderAdminOrders(); renderAll();
+  toast('All data reset');
+}
+
+/* ============== UTILITIES ============== */
+function copyIP() {
+  navigator.clipboard.writeText(DB.settings.serverIp).then(()=>toast('IP Copied! 📋'));
+}
+
+function toast(msg, type='ok') {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  if (type === 'err') t.style.background = 'linear-gradient(90deg,#ef4444,#f97316)';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>{ t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(()=>t.remove(),300); }, 2600);
+}
+
+function toggleMobile() {
+  document.getElementById('mobileMenu').classList.toggle('hidden');
+}
+
+/* Scroll Navbar */
+window.addEventListener('scroll', () => {
+  const nb = document.getElementById('navbar');
+  if (window.scrollY > 30) nb.classList.add('glass');
+  else nb.classList.remove('glass');
+});
+
+/* Particles */
+const canvas = document.getElementById('particles');
+const ctx = canvas.getContext('2d');
+let particles = [];
+function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+resizeCanvas(); window.addEventListener('resize', resizeCanvas);
+
+for (let i = 0; i < 60; i++) {
+  particles.push({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    r: Math.random() * 2 + 0.5,
+    dx: (Math.random() - 0.5) * 0.3,
+    dy: (Math.random() - 0.5) * 0.3,
+    c: ['#a855f7','#06b6d4','#ec4899','#f59e0b'][Math.floor(Math.random()*4)]
+  });
+}
+
+function animateParticles() {
+  ctx.clearRect(0,0,canvas.width, canvas.height);
+  particles.forEach(p => {
+    p.x += p.dx; p.y += p.dy;
+    if (p.x < 0 || p.x > canvas.width) p.dx *= -1;
+    if (p.y < 0 || p.y > canvas.height) p.dy *= -1;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+    ctx.fillStyle = p.c;
+    ctx.globalAlpha = 0.5;
+    ctx.fill();
+  });
+  // connect lines
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i+1; j < particles.length; j++) {
+      const dx = particles[i].x - particles[j].x;
+      const dy = particles[i].y - particles[j].y;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if (d < 120) {
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x, particles[i].y);
+        ctx.lineTo(particles[j].x, particles[j].y);
+        ctx.strokeStyle = particles[i].c;
+        ctx.globalAlpha = (1 - d/120) * 0.15;
+        ctx.stroke();
+      }
+    }
+  }
+  ctx.globalAlpha = 1;
+  requestAnimationFrame(animateParticles);
+}
+animateParticles();
+
+/* Init */
+renderAll();
+</script>
+</body>
+</html>
